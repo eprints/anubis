@@ -12,6 +12,7 @@ and graph it to get an idea of spikes of bot activity.
 package EPrints::Plugin::Screen::Admin::AnubisStatus;
 
 use EPrints::Plugin::Screen;
+use File::Temp qw/ tempfile tempdir /;
 
 @ISA = ( 'EPrints::Plugin::Screen' );
 
@@ -42,7 +43,7 @@ sub render
 
 	my $rows;
 
-    my $tmpfile = File::Temp->new;
+    my ($tmpfile, $tmpfile_name) = tempfile();
     
     my $ua = LWP::UserAgent->new();
 
@@ -51,7 +52,7 @@ sub render
     my $url = $repo->config( 'anubis', 'metrics_url' );
 
 	my $r = $ua->get( $url,
-		":content_file" => $tmpfile
+		":content_file" => $tmpfile_name
 	);
 
     my( $html , $table , $p , $span );

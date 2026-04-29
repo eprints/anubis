@@ -26,11 +26,66 @@ TARGET=http://localhost:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
 6. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
-7. Edit `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` to include anubis.conf (`Include /opt/eprints3/cfg/apache_ssl/anubis.conf`) rather than eprints_ssl.conf
+7. Edit `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` to:
+   1.  include anubis.conf (`Include /opt/eprints3/cfg/apache_ssl/anubis.conf`) 
+   2.  remove the include for eprints_ssl.conf
+   3.  Remove `PerlTransHandler +EPrints::Apache::Rewrite`
+   4.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference
 8. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`
+9. Restart apache: `sudo systemctl restart httpd` 
 
 ## How to confirm this is working
 
 Open a new browser, or an incogneto window in a browser and navigate to your repository's search page. When first loading the search page you should briefly see the anubis logo pop up.
 
 Log in as an administrator and navigate to the Admin page. Under "System Tools" there should be a new button "Anubis Status". This page will report Anubis' metrics. Note that the metrics are the current cumulative total. Future work could including some way of logging and graphing these metrics to keep an eye on Anubis.
+
+## SELinux
+
+If the Anubis Status page in EPrints shows a permission denied error, it is likely SELinux blocking apache/EPrints from making a request to Anubis' metrics.
+
+The following (as root) can fix this by adding in a rule:
+
+Create `anubismetrics.te` with the contents:
+
+```
+
+module anubismetrics 1.0;
+
+require {
+        type mysqld_tmp_t;
+        type websm_port_t;
+        type port_t;
+        type mysqld_port_t;
+        type httpd_t;
+        type init_t;
+        class file unlink;
+        class tcp_socket name_connect;
+}
+
+
+#============= httpd_t ==============
+
+#!!!! This avc can be allowed using one of the these booleans:
+#     httpd_can_network_connect, httpd_can_network_connect_db
+allow httpd_t mysqld_port_t:tcp_socket name_connect;
+
+#!!!! This avc can be allowed using one of the these booleans:
+#     httpd_can_network_connect, nis_enabled
+allow httpd_t port_t:tcp_socket name_connect;
+
+#!!!! This avc can be allowed using the boolean 'httpd_can_network_connect'
+allow httpd_t websm_port_t:tcp_socket name_connect;
+
+```
+
+Create `anubismetrics.mod` with:
+`checkmodule -M -m -o anubismetrics.mod anubismetrics.te`
+
+Create `anubismetrics.pp` file with:
+`semodule_package -o anubismetrics.pp -m anubismetrics.mod`
+
+Install this rule with:
+`semodule -i anubismetrics.pp`
+
+For more help generating SELinux rules [the redhat docs](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/sect-security-enhanced_linux-fixing_problems-allowing_access_audit2allow) are very useful.

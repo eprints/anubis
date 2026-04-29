@@ -310,11 +310,12 @@ END
 package FakeRepo;
 
 sub new {
-	my ($class, $real_repo) = @_;
+	my ($class, $real_repo, $port) = @_;
 	
 	my $self = bless {}, $class;
 
 	$self->{real_repo} = $real_repo;
+	$self->{port} =  $port;
 
 	return $self;
 }
@@ -331,7 +332,7 @@ sub config {
 
 	if($config_name eq "port"){
 		#we want to listen on http but on port 3000
-		return 3000;
+		return $self->{port};
 	}
 
 	if($config_name eq "http_url"){
@@ -343,9 +344,13 @@ sub config {
 	return $self->{real_repo}->get_conf($config_name);
 }
 
+my $localport = 3000 - 1;
+
 foreach my $repository ( values %reps ) 
 {
 	my $id = $repository->get_id();
+	
+	$localport++;
 
 	next if $repository_id && $repository_id ne $id;
 
@@ -358,10 +363,12 @@ foreach my $repository ( values %reps )
 	my $uploadmethod_file_max_size = $javascript_auto_dir . "99_uploadmethod_file_max_size.js";
 
 	my $securehost = $repository->get_conf( "securehost" );
+	
 
 	if( $replace || !-e $eprints_apache_conf )
 	{
-		my $fake_repo = FakeRepo->new($repository);
+		
+		my $fake_repo = FakeRepo->new($repository, $localport);
 		my $conf = EPrints::Apache::apache_conf( $fake_repo );
 
 		my $internalEPrintsPort = $fake_repo->config( "port" );
