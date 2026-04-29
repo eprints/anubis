@@ -24,18 +24,33 @@ B<generate_apacheconf_for_anubis> --replace [repoid]
 
 =head1 DESCRIPTION
 
-This script generates the config files to include in your Apache configuration.
+This script re-generates the config files to include Anubis in your Apache configuration.
+
+This script assumes your EPrints instance has already been configured to support HTTPS and has
+an SSL specific apache config file in archive/REPO_ID/ssl/securevhost.conf as per https://wiki.eprints.org/w/How_to_use_EPrints_with_HTTPS
 
 If you have changed a repository's configuration (hostname/port/path) you can
 update the configuration for that repository with:
 
  generate_apacheconf_for_anubis --replace [repoid]
 
+Anubis sits in front of EPrints and selectively forwards requests to EPrints, or blocks them.
+
 This will result in:
  - EPrints on HTTP (no SSL) on port 3000, not visible to the outside world
  - A reverse proxy on port 443 that forwards to the Anubis service on port 8923
  - Port 80 as a simple redirect to 443.
+ - Anubis should be configured to forward requests to localhost:3000
 
+Via the following config files:
+
+/etc/httpd/conf.d/eprints.conf includes /opt/eprints3/cfg/apache.conf
+/opt/eprints3/cfg/apache.conf includes /opt/eprints3/cfg/apache/*.conf
+/opt/eprints3/cfg/apache/REPOID.conf  listens on port 3000
+/opt/eprints3/cfg/apache/redirect.conf will redirect port 80 to 443
+
+/etc/httpd/conf.d/eprints-ssl.conf includes /opt/eprints3/archives/*/ssl/securevhost.conf
+/opt/eprints3/archives/*/ssl/securevhost.conf configures certificates and will include /opt/eprints3/cfg/apache_ssl/anubis.conf which will actually configure anubis
 
 =head2 Adding to Apache Configuration
 
@@ -184,7 +199,7 @@ my $base_path = EPrints::Config::get( "base_path" );
 my $archives_path = "$base_path/archives";
 my $perl_lib = "$base_path/perl_lib";
 my $apache_eprints_conf = EPrints::Config::get( "cfg_path" )."/apache.conf";
-# my $apache_ssl_conf = EPrints::Config::get( "cfg_path" )."/apache_ssl.conf";
+# my $anubis_ssl_conf = EPrints::Config::get( "cfg_path" )."/apache_ssl.conf";
 my $perl_module_isolation = EPrints::Config::get( "perl_module_isolation" );
 my $perl_module_isolation_conf = EPrints::Config::get( "cfg_path" )."/perl_module_isolation.conf";
 my $perl_module_isolation_vhost_conf = EPrints::Config::get( "cfg_path" )."/perl_module_isolation_vhost.conf";
@@ -226,7 +241,7 @@ END
 
 	$restart_required = 1;
 }
-# if( ($system && $replace) || !-e $apache_ssl_conf )
+# if( ($system && $replace) || !-e $anubis_ssl_conf )
 # {
 # 	my $conf = <<END;
 # #
@@ -245,12 +260,12 @@ END
 # Include $inc_ssl_path/*.conf
 
 # END
-# 	my $backup = EPrints->system->write_config_file( $apache_ssl_conf, $conf, BACKUP => 1);
+# 	my $backup = EPrints->system->write_config_file( $anubis_ssl_conf, $conf, BACKUP => 1);
 # 	if( $backup )
 # 	{
 # 		print "Wrote $backup\n" if $noise >= 1;
 # 	}
-# 	print "Wrote $apache_ssl_conf\n" if( $noise >= 1 );
+# 	print "Wrote $anubis_ssl_conf\n" if( $noise >= 1 );
 
 # 	$restart_required = 1;
 # }
@@ -350,7 +365,7 @@ sub config {
 
 	if($config_name eq "http_url"){
 		#pretend to be HTTP so we get the full HTTP-only config file
-		return "http://literallyanthing";
+		return "http://literallyAnything";
 	}
 
 	# fall back to real config
@@ -367,7 +382,7 @@ foreach my $repository ( values %reps )
 
 	my $eprints_apache_conf = "$inc_path/$id.conf";
 	my $http_to_https_redirect_conf = "$inc_path/${id}_http_to_https_redirect.conf";
-	my $apache_ssl_conf = "$inc_ssl_path/$id.conf";
+	my $anubis_ssl_conf = "$inc_ssl_path/anubis.conf";
 	my $javascript_auto_dir = $repository->get_conf( "base_path" ) . "/archives/$id/cfg/static/javascript/auto/";
 	my $uploadmethod_file_max_size = $javascript_auto_dir . "99_uploadmethod_file_max_size.js";
 
@@ -378,17 +393,8 @@ foreach my $repository ( values %reps )
 		my $fake_repo = FakeRepo->new($repository);
 		my $conf = EPrints::Apache::apache_conf( $fake_repo );
 
-		#replace <VirtualHost $virtualhost:$port>
-		#from EPrints::Apache::apache_conf
-
-		my $internalEPrintsPort = $fake_repo->config( "port" );#3000
+		my $internalEPrintsPort = $fake_repo->config( "port" );
 		
-		# my $port = $repository->config( "port" );
-		# $port = 80 if !defined $port;
-		# my $virtualhost = $repository->config( "virtualhost" );
-		# $virtualhost = "*" if !EPrints::Utils::is_set( $virtualhost );
-
-
 		# insert Listen [::1]:3000
 		$conf =~ s/<VirtualHost/Listen [::1]:$internalEPrintsPort\n\n<VirtualHost/;
 
@@ -402,11 +408,13 @@ foreach my $repository ( values %reps )
 			print "Wrote $backup\n" if( $noise >= 1 );
 		}
 		print "Wrote $eprints_apache_conf\n" if( $noise >= 1 );
+	}
 
+	if( $replace || !-e $http_to_https_redirect_conf ){
 		# if we're alreayd configured with HTTPS then this will be a simple redirect listening on port 80
 		my $redirect_to_https = EPrints::Apache::apache_conf( $repository );
 
-		$backup = EPrints->system->write_config_file( $http_to_https_redirect_conf, $redirect_to_https );
+		my $backup = EPrints->system->write_config_file( $http_to_https_redirect_conf, $redirect_to_https );
 		if( $backup )
 		{
 			print "Wrote $backup\n" if( $noise >= 1 );
@@ -417,21 +425,36 @@ foreach my $repository ( values %reps )
 		$restart_required = 1;
 	}
 
-# # Create secure include file
-# 	if( $securehost )
-# 	{
-# 		if( $replace || !-e $apache_ssl_conf )
-# 		{
-# 			my $conf = EPrints::Apache::apache_secure_conf( $repository );
-# 			my $backup = EPrints->system->write_config_file( $apache_ssl_conf, $conf );
-# 			if( $backup )
-# 			{
-# 				print "Wrote $backup\n" if( $noise >= 1 );
-# 			}
-# 			print "Wrote $apache_ssl_conf\n" if( $noise >= 1 );
-# 			$restart_required = 1;
-# 		}
-# 	}
+	if( $replace || !-e $anubis_ssl_conf ){
+
+		# block of config that should be included inside the <virtualhost> which is configured for ssl on port 443
+		my $anubis =<<EOC;
+# HTTPS listener that forwards to Anubis
+
+# These headers need to be set or else Anubis will
+# throw an "admin misconfiguration" error.
+RequestHeader set "X-Real-Ip" expr=%{REMOTE_ADDR}
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set "X-Http-Version" "%{SERVER_PROTOCOL}s"
+
+ProxyPreserveHost On
+
+ProxyRequests Off
+ProxyVia Off
+
+# Replace 8923 with the port Anubis listens on
+ProxyPass / http://[::1]:8923/
+ProxyPassReverse / http://[::1]:8923/
+
+EOC
+		my $backup = EPrints->system->write_config_file( $anubis_ssl_conf, $anubis );
+		if( $backup )
+		{
+			print "Wrote $backup\n" if( $noise >= 1 );
+		}
+		print "Wrote $anubis_ssl_conf\n" if( $noise >= 1 );
+	}
+
 
 	my $js = "max_size = " . $repository->get_conf( 'max_upload_filesize' ) . ";";
 	EPrints->system->mkdir( $javascript_auto_dir );
