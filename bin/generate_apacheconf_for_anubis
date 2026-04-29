@@ -241,35 +241,6 @@ END
 
 	$restart_required = 1;
 }
-# if( ($system && $replace) || !-e $anubis_ssl_conf )
-# {
-# 	my $conf = <<END;
-# #
-# # apache_ssl.conf include file for EPrints
-# #
-# # Any changes made here will be lost if you run generate_apacheconf_for_anubis
-# # with the --replace --system options
-# #
-
-# # Note that PerlTransHandler can't go inside
-# # a "Location" block as it occurs before the
-# # Location is known.
-# PerlTransHandler +EPrints::Apache::Rewrite
-
-# # Load the per-repository apache configuration
-# Include $inc_ssl_path/*.conf
-
-# END
-# 	my $backup = EPrints->system->write_config_file( $anubis_ssl_conf, $conf, BACKUP => 1);
-# 	if( $backup )
-# 	{
-# 		print "Wrote $backup\n" if $noise >= 1;
-# 	}
-# 	print "Wrote $anubis_ssl_conf\n" if( $noise >= 1 );
-
-# 	$restart_required = 1;
-# }
-
 
 ######write perl module isolation conf
 if($perl_module_isolation)
