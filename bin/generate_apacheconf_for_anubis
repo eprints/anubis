@@ -214,6 +214,10 @@ my $inc_ssl_path = "$base_path/cfg/apache_ssl";
 EPrints->system->mkdir( $inc_path );
 EPrints->system->mkdir( $inc_ssl_path );
 
+# we are using the same port for all hosts because they will be virtualhosts on port 3000 - allowing anubis to just forward
+# everything to port 3000 and then apache sort it out to the respective eprints repositories
+my $localport = 3000;
+
 if( ($system && $replace) || !-e $apache_eprints_conf )
 {
 	my $conf = <<END;
@@ -223,6 +227,9 @@ if( ($system && $replace) || !-e $apache_eprints_conf )
 # Any changes made here will be lost if you run generate_apacheconf_for_anubis
 # with the --replace --system options
 #
+
+# EPrints moved to be internal-only, with Anubis facing the outside world.
+Listen [::1]:$localport
 
 # Load the perl modules & repository configurations
 PerlSwitches -I$perl_lib
@@ -340,17 +347,19 @@ sub config {
 		return "http://literallyAnything";
 	}
 
+	if($config_name eq "aliases"){
+		#pretend there aren't any aliases so we just get a virtualhost block for port 3000
+		return undef;
+	}
+
 	# fall back to real config
 	return $self->{real_repo}->get_conf($config_name);
 }
 
-my $localport = 3000 - 1;
 
 foreach my $repository ( values %reps ) 
 {
 	my $id = $repository->get_id();
-	
-	$localport++;
 
 	next if $repository_id && $repository_id ne $id;
 
@@ -367,19 +376,13 @@ foreach my $repository ( values %reps )
 
 	if( $replace || !-e $eprints_apache_conf )
 	{
-		
+		# all hosts will be on the same internal port with apache virtualhosts sorting them out after anubis forwards onwards
 		my $fake_repo = FakeRepo->new($repository, $localport);
 		my $conf = EPrints::Apache::apache_conf( $fake_repo );
-
-		my $internalEPrintsPort = $fake_repo->config( "port" );
-		
-		# insert Listen [::1]:3000
-		$conf =~ s/<VirtualHost/Listen [::1]:$internalEPrintsPort\n\n<VirtualHost/;
 
 		#add in the secure option because we will be presented to the world on https, even if internally it's http
 		$conf =~ s/PerlSetVar EPrints_ArchiveID $id/PerlSetVar EPrints_ArchiveID $id\n    PerlSetVar EPrints_Secure yes/;
     	
-
 		my $backup = EPrints->system->write_config_file( $eprints_apache_conf, $conf );
 		if( $backup )
 		{

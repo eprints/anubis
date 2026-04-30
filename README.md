@@ -6,6 +6,9 @@ Anubis is an open source project which attempts to block web scrapers. It behave
 
 The default configuration aims to reach a balance between being as open as possible - we should like to allow well behaved scrapers to index EPrints - but blocking the worst bots to prioritise staying online.
 
+## TODO List
+ - Ensure EPrints is able to log the actual remote IP. Currently it's logging ::1 as the IP for all requests. This looks more like a bug in EPrints than a problem with anubis or the apache configuration.
+
 ## How to configure
 
 1. Ensure EPrints is currently configured to use SSL in the standard way [as per the wiki](https://wiki.eprints.org/w/How_to_use_EPrints_with_HTTPS) with the SSL configuration in archive/*/ssl/securevhost.conf
