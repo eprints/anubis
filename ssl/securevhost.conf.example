@@ -13,3 +13,19 @@
 
     Include /opt/eprints3/cfg/apache_ssl/anubis.conf
 </VirtualHost>
+
+# If you have any aliases you will need to configure the SSL redirects here.
+
+#<VirtualHost *:443>
+#  ServerName testserver-redirectfrom.eprints-hosting.org
+#  Redirect / https://testserver.eprints.org/
+#
+#  SSLEngine on
+#  <IfModule headers_module>
+#      ## Set the HTTP Strict Transport Security (HSTS) Header for 1 year
+#      Header always set Strict-Transport-Security 'max-age=31536000; includeSubdomains; preload'
+#  </IfModule>
+#  SSLCertificateFile /etc/letsencrypt/live/testserver-redirectfrom.eprints.org/cert.pem
+#  SSLCertificateKeyFile /etc/letsencrypt/live/testserver-redirectfrom.eprints.org/privkey.pem
+#  SSLCertificateChainFile /etc/letsencrypt/live/testserver-redirectfrom.eprints.org/chain.pem
+#</VirtualHost>

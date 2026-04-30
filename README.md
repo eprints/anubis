@@ -6,6 +6,8 @@ Anubis is an open source project which attempts to block web scrapers. It behave
 
 The default configuration aims to reach a balance between being as open as possible - we should like to allow well behaved scrapers to index EPrints - but blocking the worst bots to prioritise staying online.
 
+Multiple repositories on the same host (with their own virtualhosts) is supported.
+
 ## TODO List
  - Ensure EPrints is able to log the actual remote IP. Currently it's logging ::1 as the IP for all requests. This looks more like a bug in EPrints than a problem with anubis or the apache configuration.
 
@@ -16,7 +18,7 @@ The default configuration aims to reach a balance between being as open as possi
 3. Install this ingredient: 
    1. `cd /opt/eprints3/ingredients`
    2. `git clone https://github.com/eprints/anubis.git`
-   3. `git checkout v0.2` (or whichever release your desire)
+   3. `git checkout v0.3` (or whichever release your desire)
    4. `echo "ingredients/anubis" >> /opt/eprints3/flavours/pub_lib/inc`
 4. Copy `/opt/eprints3/ingredients/anubis/anubis_config/eprints.botPolicies.yaml` to `/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml`
 5. Create `/etc/anubis/eprints.env` with: 
@@ -33,7 +35,7 @@ POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies
    1.  include anubis.conf (`Include /opt/eprints3/cfg/apache_ssl/anubis.conf`) 
    2.  remove the include for eprints_ssl.conf
    3.  Remove `PerlTransHandler +EPrints::Apache::Rewrite`
-   4.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference
+   4.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. Note that if you have any aliases, you will have to configure the SSL redirects yourself in this file.
 8. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`
 9. Restart apache: `sudo systemctl restart httpd` 
 
