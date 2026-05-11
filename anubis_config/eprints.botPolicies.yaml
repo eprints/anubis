@@ -111,7 +111,9 @@ bots:
     action: WEIGH
     path_regex: ^/(cgi/(search|facet)/(archive/)?(advanced|simple|simple2)|cgi/export(view)?/|cgi/stats/)
     weight:
-      adjust: 10
+    # 10 didn't seem to reduce CPU usage much, 20 is noticable but still fast as a human, 30 was very slow as a human (many seconds), but was VERY effective at reducing CPU usage (by essentially blocking all search?)
+    # therefore try 20 as a sensible default
+      adjust: 20
 
 dnsbl: false
 
