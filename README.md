@@ -18,7 +18,7 @@ Multiple repositories on the same host (with their own virtualhosts) is supporte
 3. Install this ingredient: 
    1. `cd /opt/eprints3/ingredients`
    2. `git clone https://github.com/eprints/anubis.git`
-   3. `git checkout v0.3` (or whichever release your desire)
+   3. `git checkout v0.5` (or whichever release your desire)
    4. `echo "ingredients/anubis" >> /opt/eprints3/flavours/pub_lib/inc`
 4. Copy `/opt/eprints3/ingredients/anubis/anubis_config/eprints.botPolicies.yaml` to `/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml`
 5. Create `/etc/anubis/eprints.env` with: 
