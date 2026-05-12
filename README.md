@@ -31,9 +31,10 @@ TARGET=http://localhost:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
 6. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
-7. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct:
+7. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct. In most circumstances it shouldn't need editing:
    1.  It should already `Include /opt/eprints3/cfg/apache_ssl/[YOUR ARCHIVE ID].conf` which is now the anubis configuration rather than EPrints.
-   2.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. Note that if you have any aliases, you will have to configure the SSL redirects yourself in this file.
+   2.  Note that if you have any SSL aliases, you may have to re-configure the SSL redirects yourself in this file.
+   3.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. 
 8. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`
 9. Restart apache: `sudo systemctl restart httpd` 
 
@@ -42,6 +43,11 @@ POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies
 Open a new browser, or an incogneto window in a browser and navigate to your repository's search page. When first loading the search page you should briefly see the anubis logo pop up.
 
 Log in as an administrator and navigate to the Admin page. Under "System Tools" there should be a new button "Anubis Status". This page will report Anubis' metrics. Note that the metrics are the current cumulative total. Future work could including some way of logging and graphing these metrics to keep an eye on Anubis.
+
+## How to unconfigure
+
+If anything has gone wrong, or for whatever reason you need to remove anubis, you should be able to re-run EPrints' standard generate_apacheconf:
+`/opt/eprints3/bin/generate_apacheconf --replace --system`
 
 ## SELinux
 
