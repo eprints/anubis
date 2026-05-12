@@ -50,7 +50,7 @@ Via the following config files:
 /opt/eprints3/cfg/apache/redirect.conf will redirect port 80 to 443
 
 /etc/httpd/conf.d/eprints-ssl.conf includes /opt/eprints3/archives/*/ssl/securevhost.conf
-/opt/eprints3/archives/*/ssl/securevhost.conf configures certificates and will include /opt/eprints3/cfg/apache_ssl/anubis.conf which will actually configure anubis
+/opt/eprints3/archives/*/ssl/securevhost.conf configures certificates and will include /opt/eprints3/cfg/apache_ssl/[REPOID].conf which will actually configure anubis
 
 =head2 Adding to Apache Configuration
 
@@ -367,7 +367,7 @@ foreach my $repository ( values %reps )
 
 	my $eprints_apache_conf = "$inc_path/$id.conf";
 	my $http_to_https_redirect_conf = "$inc_path/${id}_http_to_https_redirect.conf";
-	my $anubis_ssl_conf = "$inc_ssl_path/anubis.conf";
+	my $anubis_ssl_conf = "$inc_ssl_path/$id.conf";
 	my $javascript_auto_dir = $repository->get_conf( "base_path" ) . "/archives/$id/cfg/static/javascript/auto/";
 	my $uploadmethod_file_max_size = $javascript_auto_dir . "99_uploadmethod_file_max_size.js";
 

@@ -31,11 +31,9 @@ TARGET=http://localhost:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
 6. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
-7. Edit `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` to:
-   1.  include anubis.conf (`Include /opt/eprints3/cfg/apache_ssl/anubis.conf`) 
-   2.  remove the include for eprints_ssl.conf
-   3.  Remove `PerlTransHandler +EPrints::Apache::Rewrite`
-   4.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. Note that if you have any aliases, you will have to configure the SSL redirects yourself in this file.
+7. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct:
+   1.  It should already `Include /opt/eprints3/cfg/apache_ssl/[YOUR ARCHIVE ID].conf` which is now the anubis configuration rather than EPrints.
+   2.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. Note that if you have any aliases, you will have to configure the SSL redirects yourself in this file.
 8. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`
 9. Restart apache: `sudo systemctl restart httpd` 
 
