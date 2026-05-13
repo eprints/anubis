@@ -383,10 +383,14 @@ foreach my $repository ( values %reps )
 		# add the secure option because we will be presented to the world on https, even if internally it's http
 		$conf =~ s/PerlSetVar EPrints_ArchiveID $id/PerlSetVar EPrints_ArchiveID $id\n    PerlSetVar EPrints_Secure yes/;
 
-		# add customised access_log which logs real IP from the other side of our own reverse proxy
-		# TODO is this accidentally red hat specific?
-		$conf =~ s@Include /opt/eprints3/cfg/perl_module_isolation_vhost.conf@Include /opt/eprints3/cfg/perl_module_isolation_vhost.conf\n    CustomLog logs/access_log "%{X-Real-Ip}i %l %u %t \\"%r\\" %>s %b \\"%{Referer}i\\" \\"%{User-Agent}i\\""@;
-    	
+		# add the following block to undo the proxy for remote-ip, so eprints can be blissfully unaware its behind a proxy
+		# # Get the real remote IP back, otherwise all accesses appear to come from ::1
+		#   <IfModule remoteip_module>
+		#     RemoteIPHeader X-Real-Ip
+		#     RemoteIPTrustedProxy ::1
+		#   </IfModule>
+		$conf =~ s@</VirtualHost>@  # Get the real remote IP back, otherwise all accesses appear to come from ::1\n  <IfModule remoteip_module>\n    RemoteIPHeader X-Real-Ip\n    RemoteIPTrustedProxy ::1\n  </IfModule>\n</VirtualHost>@;
+
 		my $backup = EPrints->system->write_config_file( $eprints_apache_conf, $conf );
 		if( $backup )
 		{
