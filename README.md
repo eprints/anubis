@@ -18,7 +18,7 @@ Multiple repositories on the same host (with their own virtualhosts) is supporte
 3. Install this ingredient: 
    1. `cd /opt/eprints3/ingredients`
    2. `git clone https://github.com/eprints/anubis.git`
-   3. `git checkout v0.5` (or whichever release your desire)
+   3. `git checkout v0.6` (or whichever release your desire)
    4. `echo "ingredients/anubis" >> /opt/eprints3/flavours/pub_lib/inc`
 4. Copy `/opt/eprints3/ingredients/anubis/anubis_config/eprints.botPolicies.yaml` to `/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml`
 5. Create `/etc/anubis/eprints.env` with: 
@@ -30,13 +30,13 @@ SERVE_ROBOTS_TXT=0
 TARGET=http://localhost:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
-6. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
-7. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct. In most circumstances it shouldn't need editing:
+6. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`. Do not proceed further until the anubis service is running!
+7. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
+8. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct. In most circumstances it shouldn't need editing:
    1.  It should already `Include /opt/eprints3/cfg/apache_ssl/[YOUR ARCHIVE ID].conf` which is now the anubis configuration rather than EPrints.
    2.  Note that if you have any SSL aliases, you may have to re-configure the SSL redirects yourself in this file.
    3.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. 
-8. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`
-9. Restart apache: `sudo systemctl restart httpd` 
+9.  Restart apache: `sudo systemctl restart httpd` 
 
 ## How to confirm this is working
 
