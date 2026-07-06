@@ -27,7 +27,7 @@ DIFFICULTY=4
 METRICS_BIND=[::1]:9090
 METRICS_BIND_NETWORK=tcp
 SERVE_ROBOTS_TXT=0
-TARGET=http://localhost:3000
+TARGET=http://[::1]:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
 6. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`. Do not proceed further until the anubis service is running!
