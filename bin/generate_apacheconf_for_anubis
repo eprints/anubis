@@ -167,26 +167,28 @@ $noise = 1+$verbose if( $verbose );
 $|=1;
 
 
-if($undo){
-	print "UNDOING anubis configuration\n";
-	print `$FindBin::Bin/../../../bin/generate_apacheconf --system --replace`;
-}
+
+
+my $shibboleth = 0;
 
 my $eprints = EPrints->new;
 
 # Load up the repositories
+my $default_repo_id=undef;
 my %reps = ();
 foreach my $id ( $eprints->repository_ids() )
 {
 	$reps{$id} = $eprints->repository( $id, db_connect => 0); 
 	EPrints->abort( "Error loading $id" ) if !defined $reps{$id};
+	if(!defined $default_repo_id){
+		$default_repo_id = $id;
+	}
 }
 
 my $base_path = EPrints::Config::get( "base_path" );
 my $archives_path = "$base_path/archives";
 my $perl_lib = "$base_path/perl_lib";
 my $apache_eprints_conf = EPrints::Config::get( "cfg_path" )."/apache.conf";
-# my $anubis_ssl_conf = EPrints::Config::get( "cfg_path" )."/apache_ssl.conf";
 my $perl_module_isolation = EPrints::Config::get( "perl_module_isolation" );
 my $perl_module_isolation_conf = EPrints::Config::get( "cfg_path" )."/perl_module_isolation.conf";
 my $perl_module_isolation_vhost_conf = EPrints::Config::get( "cfg_path" )."/perl_module_isolation_vhost.conf";
@@ -195,6 +197,135 @@ if(!-e $apache_eprints_conf){
 	print "Can't find $apache_eprints_conf - has this repo previously been configured?\n";
 
 	exit 1;
+}
+
+my $found_shibboleth = 0;
+
+my $securevhost_file = "$archives_path/$default_repo_id/ssl/securevhost.conf";
+my $securevhost_extras_file = "$archives_path/$default_repo_id/ssl/securevhost.extras.conf";
+open my $securevhost, $securevhost_file or die "Could not open $securevhost_file: $!";
+
+
+my $in_location_block = 0;
+my $in_main_shib_location_block = 0;
+my $in_a_shib_location_block = 0;
+#to make shibboleth work in front of anubis, without the rest of eprints, we need to add `PerlSetVar EPrints_ArchiveID [ARCHIVE ID]`. Has this already been done?
+my $archive_id_set_for_shib = 0;
+
+my $new_securevhost_contents = "";
+
+my $securevhost_changed = 0;
+my $non_shib_location_block_contents = "";
+my $found_non_shib_location_blocks = 0;
+my $found_include_extras = 0;
+
+my $include_extras_line = "Include /opt/eprints3/archives/$default_repo_id/ssl/securevhost.extras.conf";
+my $keep_line = 1;
+
+# looping through the lines of securevhost.conf, looking for location blocks to idenfity if shibboleth is configured and if there's anything which needs moving into extras
+# if left here config will be loaded for the front of the anubis proxy. In securevhost.extras.conf, it will be loaded by the internal eprints instance on port 3000.
+# If shibboleth is configured, will add the line `PerlSetVar EPrints_ArchiveID [ARCHIVE ID]` so that the login script can still work in front of anubis.
+# It will then set the required cookies so that eprints behind anubis will recognise the user as logged in.
+# shibd doesn't pass through the apache environment variables required for the login script to recognise the user if it is left on the eprints side of anubis.
+while( my $line = <$securevhost>)  {   
+	$keep_line = 1;
+
+	if(index($line, "<Location") != -1){
+		$in_location_block = 1;
+	}
+	
+	if(index($line, "shibboleth") != -1){
+		if(not $found_shibboleth){
+			print "Looks like shibboleth is configured\n";
+		}
+		$found_shibboleth = 1;
+		if($in_location_block){
+			$in_a_shib_location_block = 1;
+		}
+	}
+
+	if($in_location_block && !$in_a_shib_location_block){
+		$non_shib_location_block_contents .= $line;
+		$found_non_shib_location_blocks = 1;
+		# future idea: could we automatically generate securevhost.extras.conf? 
+		# I suspect this will be made up entirely of edge cases, so will leave to a human to do manually for now.
+		# $keep_line = 0;
+	}
+
+	if(index($line, "PerlSetVar EPrints_ArchiveID") != -1){
+		$archive_id_set_for_shib = 1;
+		if ($in_main_shib_location_block && $undo){
+			# strip the `PerlSetVar EPrints_ArchiveID` line inside this block
+			$keep_line = 0;
+			$securevhost_changed = 1;
+			print "Stripping line from securevhost.conf: '$line'\n" if $noise >= 1;
+		}
+	}
+
+	if(index($line, "<Location /shibboleth") != -1){
+		$in_main_shib_location_block = 1;
+	}
+
+	if(index($line, $include_extras_line) !=-1){
+		$found_include_extras = 1;
+		if (!$undo){
+			#extras are included on the eprints side of anubis
+			print "Removing $include_extras_line\n";
+			$keep_line = 0;
+		}
+	}
+
+	if(index($line, "</Location") != -1){
+		if($in_main_shib_location_block){
+			#reached the end of Location for the shibboleth login script
+			if(!$undo && !$archive_id_set_for_shib){
+				#need the `PerlSetVar EPrints_ArchiveID` line inside this block
+				my $newline =  "PerlSetVar EPrints_ArchiveID $default_repo_id";
+				$new_securevhost_contents = $new_securevhost_contents. "$newline\n";
+				print "Adding line '$newline' to securevhost.conf (to support shibboleth)\n" if $noise >= 1;
+				$securevhost_changed = 1;
+			}
+		}
+
+		$in_location_block = 0;
+		$in_main_shib_location_block = 0;
+		$in_a_shib_location_block = 0;
+	}
+
+	if (index($line, "/VirtualHost") != -1 && $undo && !$found_include_extras && -e $securevhost_extras_file){
+		#end of the virtualhost block
+		#extras file exists, but isn't included in securevhost, and we're undoing anubis.
+		$new_securevhost_contents  = $new_securevhost_contents. "$include_extras_line.\n";
+	}
+
+	if($keep_line){
+		$new_securevhost_contents  = $new_securevhost_contents. $line;
+	}
+}
+
+close $securevhost;
+
+if(!$undo && $found_shibboleth && $found_non_shib_location_blocks){
+	print "Found parts of securevhost.conf that may require moving into securevhost.extras.conf.\n";
+	print "If the following block should apply to EPrints then consider moving it to $archives_path/$default_repo_id/ssl/securevhost.extras.conf and re-running generate_apacheconf_for_anubis\n";
+	print "$non_shib_location_block_contents\n";
+}
+
+if ($securevhost_changed){
+	print "Changed securevhost.conf, please review changes.\n" if $noise >= 1;
+	print "Replacement content for securevhost.conf: \n\n\n $new_securevhost_contents\n" if $noise >= 2;
+	my $backup = EPrints->system->write_config_file( $securevhost_file, $new_securevhost_contents, BACKUP => 1 );
+	if( $backup )
+	{
+		print "Wrote $backup\n" if $noise >= 1;
+	}
+}
+
+
+if($undo){
+	print "UNDOING anubis configuration. Running generate_apacheconf --system --replace\n\n";
+	print `$base_path/bin/generate_apacheconf --system --replace`;
+	print "\n\n";
 }
 
 my $inc_path = "$base_path/cfg/apache";
@@ -209,6 +340,15 @@ my $localport = 3000;
 
 if( !$undo )
 {
+	my $extras = "";
+	# search for anything which used to be in securevhost.conf, but needs to be applied to eprints rather than the anubis proxy front end.
+	foreach my $id ( $eprints->repository_ids() ){
+		my $extrasconf = "$archives_path/$id/ssl/securevhost.extras.conf";
+		if( -e $extrasconf){
+			$extras = "$extras Include $extrasconf\n";
+		}
+	}
+
 	my $conf = <<END;
 #
 # apache.conf include file for EPrints
@@ -225,6 +365,8 @@ Include $base_path/cfg/perl_module_isolation.conf
 
 # Load the per-repository apache configuration
 Include $inc_path/*.conf
+
+$extras
 
 END
 	my $backup = EPrints->system->write_config_file( $apache_eprints_conf, $conf, BACKUP => 1 );
@@ -325,7 +467,7 @@ sub config {
 	my ($self, $config_name) = @_;
 
 	if($config_name eq "port"){
-		#we want to listen on http but on port 3000
+		#we want to listen on http but on port 3000 (by default, can be overriden)
 		return $self->{port};
 	}
 
@@ -396,6 +538,17 @@ foreach my $repository ( values %reps )
 			print "Wrote $backup\n" if( $noise >= 1 );
 		}
 		print "Wrote $http_to_https_redirect_conf\n" if( $noise >= 1 );
+	}else{
+		#stolen from innards of EPrints->system->write_config_file
+		my @now = localtime();
+		my $newpath = sprintf("%s.%04d%02d%02d",
+			$http_to_https_redirect_conf,
+			$now[5]+1900,
+			$now[4]+1,
+			$now[3]
+		);
+		File::Copy::move($http_to_https_redirect_conf, $newpath);
+		print "Moved $http_to_https_redirect_conf to $newpath\n" if $noise >= 1;
 	}
 
 	if( !$undo ){
@@ -414,7 +567,18 @@ ProxyPreserveHost On
 
 ProxyRequests Off
 ProxyVia Off
+EOC
 
+		if($found_shibboleth){
+			$anubis.=<<EOC;
+# don't try and proxy shibboleth. Unsure why shib.conf isn't taking priority but this does fix it
+ProxyPass /Shibboleth.sso !
+ProxyPass /shibboleth !
+ProxyPass /cgi/shibboleth !
+EOC
+
+		}
+		$anubis.=<<EOC;
 # Replace 8923 with the port Anubis listens on
 ProxyPass / http://[::1]:8923/
 ProxyPassReverse / http://[::1]:8923/
@@ -428,13 +592,15 @@ EOC
 		print "Wrote $anubis_ssl_conf\n" if( $noise >= 1 );
 	}
 
+	# TODO review if we still need this in the anubis version of this script?
 	my $max_size = $repository->get_conf( 'max_upload_filesize' );
 	if(defined $max_size){
 		my $js = "max_size = " . $repository->get_conf( 'max_upload_filesize' ) . ";";
 		EPrints->system->mkdir( $javascript_auto_dir );
 		EPrints->system->write_config_file( $uploadmethod_file_max_size, $js );
 	}else{
-		print STDERR "max_upload_filesize not configured"
+		# older instances of EPrints don't have this in config. Just carry on
+		print STDERR "max_upload_filesize not configured";
 	}
 }
 
