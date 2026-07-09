@@ -289,7 +289,7 @@ while( my $line = <$securevhost>)  {
 			if(!$undo && !$archive_id_set_for_shib){
 				#need the `PerlSetVar EPrints_ArchiveID` line inside this block
 				my $newline =  "PerlSetVar EPrints_ArchiveID $default_repo_id";
-				$new_securevhost_contents = $new_securevhost_contents. "$newline\n";
+				$new_securevhost_contents.= "$newline\n";
 				print "Adding line '$newline' to securevhost.conf (to support shibboleth)\n" if $noise >= 1;
 				$securevhost_changed = 1;
 			}
@@ -301,13 +301,14 @@ while( my $line = <$securevhost>)  {
 	}
 
 	if (index($line, "/VirtualHost") != -1 && $undo && !$found_include_extras && -e $securevhost_extras_file){
-		#end of the virtualhost block
-		#extras file exists, but isn't included in securevhost, and we're undoing anubis.
-		$new_securevhost_contents  = $new_securevhost_contents. "$include_extras_line.\n";
+		# we're undoing anubis.
+		# we're at the end of the virtualhost block 
+		# extras file exists, but isn't included in securevhost, add it.
+		$new_securevhost_contents .= "$include_extras_line\n";
 	}
 
 	if($keep_line){
-		$new_securevhost_contents  = $new_securevhost_contents. $line;
+		$new_securevhost_contents .= $line;
 	}
 }
 
