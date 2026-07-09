@@ -176,14 +176,22 @@ my $eprints = EPrints->new;
 # Load up the repositories
 my $default_repo_id=undef;
 my %reps = ();
+my $found_archives = 0;
 foreach my $id ( $eprints->repository_ids() )
 {
 	$reps{$id} = $eprints->repository( $id, db_connect => 0); 
 	EPrints->abort( "Error loading $id" ) if !defined $reps{$id};
+	$found_archives += 1;
 	if(!defined $default_repo_id){
 		$default_repo_id = $id;
 	}
 }
+
+if($found_archives == 0){
+	print "No configured archive found, cannot proceed\n";
+	exit 1;
+}
+
 
 my $base_path = EPrints::Config::get( "base_path" );
 my $archives_path = "$base_path/archives";
@@ -304,6 +312,11 @@ while( my $line = <$securevhost>)  {
 }
 
 close $securevhost;
+
+if($found_archives > 1 && $found_shibboleth){
+	print "Multiple archives found and shibboleth required. This is not yet supported. This script will now exit.\n";
+	exit 1;
+}
 
 if(!$undo && $found_shibboleth && $found_non_shib_location_blocks){
 	print "Found parts of securevhost.conf that may require moving into securevhost.extras.conf.\n";
