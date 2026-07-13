@@ -31,12 +31,14 @@ TARGET=http://[::1]:3000
 POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml
 ```
 6. Enable and start systemd module for anubis for EPrints: `sudo systemctl enable --now anubis@eprints.service`. Do not proceed further until the anubis service is running!
-7. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --replace --system` to update EPrints apache config files to set up the Anubis proxy
+7. Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis` to update EPrints apache config files to set up the Anubis proxy
 8. Confirm `/opt/eprints3/archives/[YOUR ARCHIVE ID]/ssl/securevhost.conf` is correct. In most circumstances it shouldn't need editing:
    1.  It should already `Include /opt/eprints3/cfg/apache_ssl/[YOUR ARCHIVE ID].conf` which is now the anubis configuration rather than EPrints.
    2.  Note that if you have any SSL aliases, you may have to re-configure the SSL redirects yourself in this file.
    3.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. 
 9.  Restart apache: `sudo systemctl restart httpd` 
+
+Note that I recommend disabling any rate-limiting that mod_security may be performing as I'm not sure how this interacts with Anubis.
 
 ## How to confirm this is working
 
@@ -46,8 +48,8 @@ Log in as an administrator and navigate to the Admin page. Under "System Tools" 
 
 ## How to unconfigure
 
-If anything has gone wrong, or for whatever reason you need to remove anubis, you should be able to re-run EPrints' standard generate_apacheconf:
-`/opt/eprints3/bin/generate_apacheconf --replace --system`
+If anything has gone wrong, or for whatever reason you need to remove anubis, you can run:
+`/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --undo`
 
 ## SELinux
 
