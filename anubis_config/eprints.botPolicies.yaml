@@ -107,10 +107,10 @@ bots:
   #     adjust: 10
 
   # challenge any clients going to CPU heavy pages. Regex lifted from our experimental rate-limiting config for mod_security
-  # note - experimenting with NOT blocking export. Can add `cgi/export(view)?/` as its own rule or back here in the future if needed
+  # note - have experimented with NOT blocking export (`cgi/export(view)?/`) but this didn't result in the CPU usage reduction we'd hoped for, so have added it back.
   - name: cpu-heavy-pages
     action: WEIGH
-    path_regex: ^/(cgi/(search|facet)/(archive/)?(advanced|simple|simple2)|cgi/stats/)
+    path_regex: ^/(cgi/(search|facet)/(archive/)?(advanced|simple|simple2)|cgi/export(view)?/|cgi/stats/)
     weight:
     # 10 didn't seem to reduce CPU usage much, 20 is noticable but still fast as a human, 30 was very slow as a human (many seconds), but was VERY effective at reducing CPU usage (by essentially blocking all search?)
     # therefore try 20 as a sensible default

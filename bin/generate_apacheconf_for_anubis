@@ -270,7 +270,7 @@ while( my $line = <$securevhost>)  {
 		}
 	}
 
-	if(index($line, "<Location /shibboleth") != -1){
+	if(index($line, "<Location /shibboleth") != -1 || index($line, "<Location \"/shibboleth") != -1){
 		$in_main_shib_location_block = 1;
 	}
 
