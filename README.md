@@ -102,3 +102,20 @@ Install this rule with:
 `semodule -i anubismetrics.pp`
 
 For more help generating SELinux rules [the redhat docs](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/sect-security-enhanced_linux-fixing_problems-allowing_access_audit2allow) are very useful.
+
+## Common Custom Anubis Rules
+
+In `/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml` the default Anubis bot list is used and a proof-of-work check is enabled only for stats and search. Export may also need to be covered, we are still experimenting with the best policy.
+
+# IP Whitelist
+
+The remote_addresses argument expects CIDR notation, for a single IP use "/32".
+
+```
+- name: ip-whitelist
+    action: ALLOW
+    remote_addresses:
+      [
+        "152.78.x.x/32"
+      ]
+```
