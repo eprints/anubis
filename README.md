@@ -51,6 +51,8 @@ Log in as an administrator and navigate to the Admin page. Under "System Tools" 
 If anything has gone wrong, or for whatever reason you need to remove anubis, you can run:
 `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --undo`
 
+This will put EPrints' Apache config back to how it was before. Anubis will still be running as a service in the background, but Apache will not be routing any traffic through it.
+
 ## SELinux
 
 If the Anubis Status page in EPrints shows a permission denied error, it is likely SELinux blocking apache/EPrints from making a request to Anubis' metrics.
