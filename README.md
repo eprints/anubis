@@ -9,7 +9,7 @@ The default configuration aims to reach a balance between being as open as possi
 Multiple repositories on the same host (with their own virtualhosts) is supported.
 
 ## TODO List
- - Ensure EPrints is able to log the actual remote IP. Currently it's logging ::1 as the IP for all requests. This looks more like a bug in EPrints than a problem with anubis or the apache configuration.
+ - Error message from generate_apacheconf_for_anubis or support for HTTP (no ssl) or HTTP & HTTPs with no HTTP->HTTPS redirect.
 
 ## How to configure
 
@@ -37,6 +37,8 @@ POLICY_FNAME=/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies
    2.  Note that if you have any SSL aliases, you may have to re-configure the SSL redirects yourself in this file.
    3.  An example SSL config file using Lets Encrypt is provided in `/opt/eprints3/ingredients/anubis/ssl/securevhost.conf.example` for reference. 
 9.  Restart apache: `sudo systemctl restart httpd` 
+
+If you need to revert the apache config changes use `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --undo`
 
 Note that I recommend disabling any rate-limiting that mod_security may be performing as I'm not sure how this interacts with Anubis.
 
