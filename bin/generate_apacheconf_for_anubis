@@ -504,11 +504,13 @@ foreach my $repository ( values %reps )
 {
 	my $id = $repository->get_id();
 
+	#if one repo has been explicitly requested, skip all the others
 	next if $repository_id && $repository_id ne $id;
 
-	my $cfg_path = $repository->get_conf( "config_path" );
+	my $eprints_apache_conf_file = "$inc_path/$id.conf";
 
-	my $eprints_apache_conf = "$inc_path/$id.conf";
+	my $eprints_apachelog_conf = "$inc_path/$id.logging.conf";
+
 	my $http_to_https_redirect_conf = "$inc_path/${id}_http_to_https_redirect.conf";
 	my $anubis_ssl_conf = "$inc_ssl_path/$id.conf";
 	my $javascript_auto_dir = $repository->get_conf( "base_path" ) . "/archives/$id/cfg/static/javascript/auto/";
@@ -520,11 +522,29 @@ foreach my $repository ( values %reps )
 	if( !$undo )
 	{
 		# all hosts will be on the same internal port with apache virtualhosts sorting them out after anubis forwards requests to $localport (3000 by default)
+
+		# separate out the logging commands so these can be easily manually altered, without fear that this script will overwrite them
+
+		if(! -e $eprints_apachelog_conf){
+			# there isn't a config file with logging yet
+			my $logging_config_contents = "
+
+# This file configures the apache logs of EPrints itself. Only requests passed through anubis to EPrints can make it this far.
+# This file will not be overwritten by generate_apacheconf_for_anubis, so you can modify it.
+
+ErrorLog /var/log/httpd/${id}_eprints_error.log
+CustomLog /var/log/httpd/${id}_eprints_access.log combined
+";
+			EPrints->system->write_config_file( $eprints_apachelog_conf, $logging_config_contents );
+		}
+
 		my $fake_repo = FakeRepo->new($repository, $localport);
-		my $conf = EPrints::Apache::apache_conf( $fake_repo );
+		my $new_config_contents = EPrints::Apache::apache_conf( $fake_repo );
 
 		# add the secure option because we will be presented to the world on https, even if internally it's http
-		$conf =~ s/PerlSetVar EPrints_ArchiveID $id/PerlSetVar EPrints_ArchiveID $id\n    PerlSetVar EPrints_Secure yes/;
+		$new_config_contents =~ s/PerlSetVar EPrints_ArchiveID $id/PerlSetVar EPrints_ArchiveID $id\n    PerlSetVar EPrints_Secure yes/;
+
+		$new_config_contents =~ s/ServerAdmin/Include $eprints_apachelog_conf\n\n  ServerAdmin/;
 
 		# add the following block to undo the proxy for remote-ip, so eprints can be blissfully unaware its behind a proxy
 		# # Get the real remote IP back, otherwise all accesses appear to come from ::1
@@ -532,14 +552,14 @@ foreach my $repository ( values %reps )
 		#     RemoteIPHeader X-Real-Ip
 		#     RemoteIPTrustedProxy ::1
 		#   </IfModule>
-		$conf =~ s@</VirtualHost>@  # Get the real remote IP back, otherwise all accesses appear to come from ::1\n  <IfModule remoteip_module>\n    RemoteIPHeader X-Real-Ip\n    RemoteIPTrustedProxy ::1\n  </IfModule>\n</VirtualHost>@;
-
-		my $backup = EPrints->system->write_config_file( $eprints_apache_conf, $conf );
+		$new_config_contents =~ s@</VirtualHost>@  # Get the real remote IP back, otherwise all accesses appear to come from ::1\n  <IfModule remoteip_module>\n    RemoteIPHeader X-Real-Ip\n    RemoteIPTrustedProxy ::1\n  </IfModule>\n</VirtualHost>@;
+		
+		my $backup = EPrints->system->write_config_file( $eprints_apache_conf_file, $new_config_contents );
 		if( $backup )
 		{
 			print "Wrote $backup\n" if( $noise >= 1 );
 		}
-		print "Wrote $eprints_apache_conf\n" if( $noise >= 1 );
+		print "Wrote $eprints_apache_conf_file\n" if( $noise >= 1 );
 	}
 
 	if( !$undo ){
