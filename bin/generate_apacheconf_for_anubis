@@ -637,7 +637,7 @@ if($anubis_forwards_to_port ne $anubis_should_forward_to_port)
 	print "\n\nAnubis is currently configured to forward to port $anubis_forwards_to_port ($anubis_current_target).\n";
 	print "For rate limiting to be correctly $ratelimit_is you will need to edit $anubis_config_path and change TARGET=... to be TARGET=http://[::1]:$anubis_should_forward_to_port\n\n";
 	if($ratelimit){
-		print "You will also need to ensure nginx is configured and running\n";
+		print "You will also need to ensure nginx is configured to load /opt/eprints/archives/$default_repo_id/nginx/eprints.conf and is enabled and running\n";
 	}
 }
 

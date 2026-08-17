@@ -42,6 +42,41 @@ If you need to revert the apache config changes use `/opt/eprints3/ingredients/a
 
 Note that I recommend disabling any rate-limiting that mod_security may be performing as I'm not sure how this interacts with Anubis.
 
+## Rate Limiting With Nginx
+
+Even with Anubis configured some repositories have still experienced extremely heavy CPU load and been taken offline. An experimental rate and connection limiting config for nginx is available.
+
+This sits on port 4000, behind Anubis and in front of EPrints. It will limit rates globally and per-IP and limit the maximum number of simultanious connections to CPU heavy pages (configurable). When limits have been reached, an HTTP 503 is sent, with a page explaining which feature is temporarily offline. This should keep a lid on the maximum CPU usage and enable EPrints to stay alive, even if search, stats, and export functionality stops working.
+
+Run `/opt/eprints3/ingredients/anubis/bin/generate_apacheconf_for_anubis --ratelimit` to configure Apache to override the default HTTP 503 behaviour.
+
+Copy `/opt/eprints3/ingredients/anubis/rate_limiting/eprints_nginx_rate_limiting.conf` to `/opt/eprints/archives/[ARCHIVE ID]/nginx/eprints_nginx_rate_limiting.conf` where you can make archive specific changes. Then make sure that this is included in nginx. On Red Hat you will want to remove the `server {}` block in `/etc/nginx/nginx.conf` and create `/etc/nginx/conf.d/eprints.conf` with the content:
+
+```
+include /opt/eprints3/archives/[YOUR ARCHIVE ID]/nginx/*.conf;
+```
+
+On most other distros you will want to remove `/etc/nginx/sites_enabled/default` and create `/etc/nginx/sites_enabled/eprints.conf` with the above content instead.
+
+
+## Diagrams
+
+### With Rate Limiting using Nginx
+```mermaid
+graph LR
+   A[Apache:80/443] --> B[Anubis:9090 \nProof of work]
+   B --> C[Nginx:4000 \nURL and IP based rules]
+   C -- Rate Limited --> D[Apache for EPrints:3000]
+   C  --> D
+```
+
+### Without Rate Limiting
+```mermaid
+graph LR
+   A[Apache:80/443] --> B[Anubis:9090 \nProof of work]
+   B --> D[Apache for EPrints:3000]
+```
+
 ## How to confirm this is working
 
 Open a new browser, or an incogneto window in a browser and navigate to your repository's search page. When first loading the search page you should briefly see the anubis logo pop up.
