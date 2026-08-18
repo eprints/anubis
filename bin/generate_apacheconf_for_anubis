@@ -617,6 +617,7 @@ Include $ratelimit_errorpages_conf
 	}
 }
 my $anubis_config_path = "/etc/anubis/eprints.env";
+# Get what's after the last colon, which should be the port number
 my $anubis_forwards_to_port = `awk -F ':' '/TARGET/{print \$NF}' $anubis_config_path`;
 # strip whitespace. Because why would that be easy in perl?
 $anubis_forwards_to_port =~ s/^\s*(.*?)\s*$/$1/;
