@@ -21,6 +21,7 @@ Multiple repositories on the same host (with their own virtualhosts) is supporte
    3. `git checkout v0.6` (or whichever release your desire)
    4. `echo "ingredients/anubis" >> /opt/eprints3/flavours/pub_lib/inc`
 4. Copy `/opt/eprints3/ingredients/anubis/anubis_config/eprints.botPolicies.yaml` to `/opt/eprints3/archives/[YOUR ARCHIVE ID]/anubis/eprints.botPolicies.yaml`
+   - Alternatively use `eprints_permissive.botPolicies.yaml` which only blocks known bad bots and otherwise won't do any proof of work
 5. Create `/etc/anubis/eprints.env` with: 
 ```BIND=:8923
 DIFFICULTY=4
