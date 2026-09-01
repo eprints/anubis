@@ -64,18 +64,55 @@ On most other distros you will want to remove `/etc/nginx/sites_enabled/default`
 
 ### With Rate Limiting using Nginx
 ```mermaid
-graph LR
-   A[Apache:80/443] --> B[Anubis:9090 \nProof of work]
-   B --> C[Nginx:4000 \nURL and IP based rules]
-   C -- Rate Limited --> D[Apache for EPrints:3000]
-   C  --> D
+flowchart LR
+   
+   TCP(Apache:80/443\nsecurevhosts.conf)
+   EPR(Apache for EPrints:3000\ncfg/apache/ARCHIVE.conf)
+   
+
+   subgraph Filtering and Rate Limiting
+      ANU(Anubis:9090)
+      PROOF(Proof of Work)
+      BAD(Bad Bot Rules Only)
+      RATE(Rate & Connection Limiting)
+      NGX(Nginx:4000 \neprints_nginx_rate_limiting.conf)
+      
+   end
+
+   
+   TCP -->  ANU
+   ANU --> | CPU Heavy Pages | PROOF
+   PROOF -.-> NGX
+   ANU --> | All Other Pages | BAD
+   BAD -.-> NGX
+   NGX --> | CPU Heavy Pages | RATE
+   
+   RATE -.->  EPR
+   NGX --> | All Other Pages | EPR
+   
 ```
 
 ### Without Rate Limiting
 ```mermaid
-graph LR
-   A[Apache:80/443] --> B[Anubis:9090 \nProof of work]
-   B --> D[Apache for EPrints:3000]
+flowchart LR
+   
+   TCP(Apache:80/443\nsecurevhosts.conf)
+   EPR(Apache for EPrints:3000\ncfg/apache/ARCHIVE.conf)
+   
+
+   subgraph Filtering
+      ANU(Anubis:9090)
+      PROOF(Proof of Work)
+      BAD(Bad Bot Rules Only)
+   end
+
+   
+   TCP -->  ANU
+   ANU --> | CPU Heavy Pages | PROOF
+   PROOF -.-> EPR
+   ANU --> | All Other Pages | BAD
+   BAD -.-> EPR
+   
 ```
 
 ## How to confirm this is working
