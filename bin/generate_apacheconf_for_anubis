@@ -172,8 +172,17 @@ $noise = 1+$verbose if( $verbose );
 # Set STDOUT to auto flush (without needing a \n)
 $|=1;
 
-
-
+if($undo){
+	print "Reverting all anubis/nginx configuration\n";
+}
+else{
+	if ($ratelimit)
+	{
+		print "Generating configuration to use nginx for rate limiting as well as anubis\n";
+	}else{
+		print "Not using nginx, just anubis\n";
+	}
+}
 
 my $shibboleth = 0;
 
@@ -574,6 +583,7 @@ ProxyPreserveHost On
 
 ProxyRequests Off
 ProxyVia Off
+ProxyTimeout 300
 EOC
 
 		if($found_shibboleth){
